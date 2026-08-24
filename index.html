@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#6b4bb8">
+<title>אליה קוראת</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="sparkles" aria-hidden="true"></div>
+
+<!-- ============ בית ============ -->
+<section id="screen-home" class="screen active">
+  <header class="home-head">
+    <button id="parent-gate" class="parent-gate" aria-label="הורים">·</button>
+    <div class="hello"><span class="mascot">🦄</span><span id="hello-text">שלום!</span></div>
+  </header>
+
+  <div id="garden" class="garden"></div>
+
+  <nav class="modes">
+    <button class="mode" data-mode="sandbox">
+      <span class="mode-icon">✨</span><span class="mode-label">מעבדת הקסם</span>
+    </button>
+    <button class="mode" data-mode="listen">
+      <span class="mode-icon">👂</span><span class="mode-label">שומעת ובוחרת</span>
+    </button>
+    <button class="mode" data-mode="hunt">
+      <span class="mode-icon">🔍</span><span class="mode-label">ציד אותיות</span>
+    </button>
+    <button class="mode" data-mode="read">
+      <span class="mode-icon">🗣️</span><span class="mode-label">קוראת בקול</span>
+    </button>
+  </nav>
+
+  <p id="no-voice" class="no-voice hidden">
+    🔇 אין קול בעברית במכשיר הזה — אפשר עדיין לשחק בציד אותיות
+  </p>
+</section>
+
+<!-- ============ מעבדת הקסם ============ -->
+<section id="screen-sandbox" class="screen">
+  <button class="back" data-back aria-label="חזרה">↩</button>
+  <div class="lab">
+    <div id="lab-out" class="lab-out">?</div>
+    <button id="lab-say" class="ear big" aria-label="שמע">👂</button>
+  </div>
+  <div class="picker">
+    <div id="lab-letters" class="pick-row"></div>
+    <div id="lab-vowels" class="pick-row vowels"></div>
+  </div>
+</section>
+
+<!-- ============ סבב משחק ============ -->
+<section id="screen-round" class="screen">
+  <button class="back" data-back aria-label="חזרה">↩</button>
+  <div id="progress" class="progress"></div>
+  <div id="round-body" class="round-body"></div>
+</section>
+
+<!-- ============ חגיגה ============ -->
+<div id="celebrate" class="overlay hidden">
+  <div class="celebrate-card">
+    <div id="celebrate-gift" class="gift">🌸</div>
+    <div id="celebrate-text" class="celebrate-text">כל הכבוד!</div>
+    <div id="celebrate-unlock" class="unlock-note hidden"></div>
+    <button id="celebrate-ok" class="primary">➜</button>
+  </div>
+</div>
+
+<!-- ============ הורים ============ -->
+<div id="parent" class="overlay hidden">
+  <div class="parent-card">
+    <h2>מסך הורים</h2>
+    <div id="parent-voice" class="parent-voice"></div>
+    <h3>שליטה באותיות</h3>
+    <div id="parent-mastery" class="mastery-grid"></div>
+    <h3>אותיות פתוחות</h3>
+    <div id="parent-letters" class="toggle-grid"></div>
+    <h3>ניקוד פתוח</h3>
+    <div id="parent-vowels" class="toggle-grid"></div>
+    <div class="parent-actions">
+      <button id="parent-close" class="primary">סגירה</button>
+      <button id="parent-reset" class="danger">איפוס הכל</button>
+    </div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="audio.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
