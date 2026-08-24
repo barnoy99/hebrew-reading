@@ -333,8 +333,16 @@
   /* ---------- מסך הורים ---------- */
 
   function openParent() {
-    $('#parent-voice').textContent =
-      'Hebrew voice: ' + (Audio2.hasHebrew() ? Audio2.voiceName() : 'NONE — install a Hebrew TTS pack');
+    const lines = ['Hebrew voice: ' +
+      (Audio2.hasHebrew() ? Audio2.voiceName() : 'NONE — install a Hebrew TTS pack')];
+    if (typeof Sync !== 'undefined') {
+      const c = Sync.clips;
+      lines.push('Sync: ' + (Sync.isDev ? 'off (localhost dev copy)' : Sync.status) +
+                 '  ·  ' + Sync.path);
+      lines.push('Clips: ' + ClipStore.count() + ' here, ' + c.remote +
+                 ' in the cloud (' + c.pulled + ' pulled, ' + c.pushed + ' pushed)');
+    }
+    $('#parent-voice').textContent = lines.join('\n');
 
     const mg = $('#parent-mastery'); mg.innerHTML = '';
     Engine.masteryReport().forEach(r => {
@@ -399,7 +407,11 @@
 
       const del = el('button', 'sbtn del', '✕');
       del.title = 'מחיקה';
-      del.onclick = async () => { await ClipStore.del(it.key); markRow(row, it.key); studioCount(); };
+      del.onclick = async () => {
+        await ClipStore.del(it.key);
+        if (typeof Sync !== 'undefined') Sync.pushClip(it.key);   // remove remotely too
+        markRow(row, it.key); studioCount();
+      };
       row.appendChild(del);
 
       markRow(row, it.key);
@@ -419,7 +431,18 @@
   function studioCount() {
     const items = Engine.audioManifest();
     const done = items.filter(i => ClipStore.has(i.key)).length;
-    $('#studio-count').textContent = done + ' מתוך ' + items.length + ' הוקלטו';
+    let txt = done + ' מתוך ' + items.length + ' הוקלטו';
+    if (typeof Sync !== 'undefined') {
+      if (Sync.isDev) txt += ' · מקומי בלבד (localhost)';
+      else if (Sync.status === 'synced') txt += ' · מסונכרן ☁';
+      else if (Sync.status === 'off') txt += ' · ללא סנכרון';
+      else if (Sync.status === 'local') txt += ' · אין חיבור';
+    }
+    $('#studio-count').textContent = txt;
+  }
+
+  function studioCountIfOpen() {
+    if (!$('#studio').classList.contains('hidden')) { openStudio(); }
   }
 
   async function toggleRecord(key, btn, row) {
@@ -440,7 +463,11 @@
     mr.onstop = async () => {
       stream.getTracks().forEach(t => t.stop());
       const blob = new Blob(chunks, { type: mr.mimeType || 'audio/webm' });
-      if (blob.size > 0) await ClipStore.put(key, blob);
+      if (blob.size > 0) {
+        await ClipStore.put(key, blob);
+        // straight to the other devices, without waiting for an export
+        if (typeof Sync !== 'undefined') Sync.pushClip(key);
+      }
       btn.textContent = '●';
       btn.classList.remove('recording');
       markRow(row, key);
@@ -506,6 +533,15 @@
     // recordings and the committed-clip manifest must be known before the
     // first sound plays, or she would hear TTS for something already recorded
     try { await Promise.all([ClipStore.ready, Audio2.manifestReady]); } catch (e) {}
+
+    /* Cross-device sync. Never mid-round, so nothing shifts under her feet. */
+    if (typeof Sync !== 'undefined') {
+      Sync.setBusyCheck(() => round !== null);
+      Sync.init((mergedProgress, newClips) => {
+        if (mergedProgress && round === null) renderHome();
+        if (newClips) studioCountIfOpen();
+      });
+    }
 
     // audio needs a real gesture before it will play on mobile
     const unlockOnce = () => {

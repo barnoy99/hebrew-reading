@@ -38,7 +38,53 @@ const Engine = (function () {
     return s;
   }
 
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
+  let onSave = null;
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {}
+    if (onSave) { try { onSave(); } catch (e) {} }
+  }
+
+  /* Merge a copy from another device. Never assign over the top — every field
+     has a rule that cannot lose work:
+       per-pair progress : whichever device practised that pair more often
+       letters / vowels  : union, because an unlock must never be taken back
+       writing           : the higher score, it only reflects demonstrated skill
+       garden / rounds   : the larger, they only ever grow                    */
+  function mergeState(r) {
+    if (!r || typeof r !== 'object') return false;
+    const before = JSON.stringify(s);
+
+    const keys = new Set(Object.keys(s.seen || {}).concat(Object.keys(r.seen || {})));
+    keys.forEach(k => {
+      const mine = (s.seen || {})[k] || 0;
+      const theirs = (r.seen || {})[k] || 0;
+      if (theirs <= mine) return;
+      // take the pair's whole record together so seen and mastery stay coherent
+      s.seen[k] = theirs;
+      if (r.mastery && r.mastery[k] !== undefined) s.mastery[k] = r.mastery[k];
+    });
+
+    const union = (a, b) => Array.from(new Set((a || []).concat(b || [])));
+    s.letters = union(s.letters, r.letters).filter(id => L[id]);
+    s.vowels  = union(s.vowels,  r.vowels).filter(id => V[id]);
+
+    if (r.write) {
+      if (!s.write) s.write = {};
+      Object.keys(r.write).forEach(id => {
+        s.write[id] = Math.max(s.write[id] || 0, r.write[id] || 0);
+      });
+    }
+
+    if ((r.garden || []).length > (s.garden || []).length) s.garden = r.garden.slice();
+    s.rounds      = Math.max(s.rounds || 0, r.rounds || 0);
+    s.unlockCount = Math.max(s.unlockCount || 0, r.unlockCount || 0);
+    if (!s.newestLetter && r.newestLetter) s.newestLetter = r.newestLetter;
+
+    const changed = JSON.stringify(s) !== before;
+    if (changed) save();
+    return changed;
+  }
   function reset() { s = fresh(); save(); return s; }
 
   /* ---------- text building ---------- */
@@ -364,7 +410,8 @@ const Engine = (function () {
   }
 
   return {
-    load, save, reset,
+    load, save, reset, mergeState,
+    setOnSave(fn) { onSave = fn; },
     state: () => s,
     L, V, sylText, phon, ttsText, sayOf, letterSay, key,
     pickSyllable, makeDistractors, pseudoWord, huntGrid,

@@ -172,8 +172,9 @@ button { font-family:inherit; cursor:pointer; border:none; background:none; colo
 .parent-card { text-align:right; }
 .parent-card h2 { margin:0 0 10px; font-size:24px; }
 .parent-card h3 { margin:18px 0 8px; font-size:17px; color:var(--muted); }
-.parent-voice { font-size:14px; color:var(--muted); direction:ltr; text-align:left;
-                background:#f5f2fb; border-radius:12px; padding:8px; }
+.parent-voice { font-size:13px; color:var(--muted); direction:ltr; text-align:left;
+                background:#f5f2fb; border-radius:12px; padding:8px;
+                white-space:pre-line; line-height:1.6; }
 .mastery-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(66px,1fr)); gap:8px; }
 .mcell { background:#f5f2fb; border-radius:14px; padding:6px; text-align:center; }
 .mcell .ch { font-size:30px; font-weight:500; }

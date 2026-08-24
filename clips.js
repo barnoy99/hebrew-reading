@@ -69,6 +69,24 @@ const ClipStore = (function () {
     });
   }
 
+  /* base64 <-> Blob, for carrying recordings through the database.
+     btoa on a whole file blows the argument limit, so chunk it. */
+  async function toBase64(blob) {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(bin);
+  }
+
+  function fromBase64(b64, mime) {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: mime || 'audio/webm' });
+  }
+
   return {
     ready,
     has: k => mem.has(k),
@@ -76,7 +94,7 @@ const ClipStore = (function () {
     blob: k => { const e = mem.get(k); return e ? e.blob : null; },
     keys: () => [...mem.keys()],
     count: () => mem.size,
-    put, del
+    put, del, toBase64, fromBase64
   };
 })();
 
