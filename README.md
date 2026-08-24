@@ -15,8 +15,9 @@ Locally on Windows, from this folder:
 python -m http.server 8044
 ```
 
-Then open <http://localhost:8044>. For the Android tablet, push the folder to a GitHub
-Pages repo (same as the other apps) and add it to the home screen.
+Then open <http://localhost:8044>.
+
+Deployed from `main` via GitHub Pages — pushing to `origin/main` updates the live site.
 
 ## How it adapts
 
