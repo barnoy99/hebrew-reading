@@ -186,6 +186,44 @@ button { font-family:inherit; cursor:pointer; border:none; background:none; colo
 .parent-actions { display:flex; gap:10px; justify-content:space-between;
                   align-items:center; margin-top:20px; }
 
+/* ---------- כותבת אותיות ---------- */
+.trace-wrap { background:var(--card); border-radius:var(--r); box-shadow:var(--shadow);
+              padding:10px; line-height:0; }
+canvas.trace { touch-action:none; border-radius:18px; display:block;
+               max-width:min(300px, 78vw); max-height:min(300px, 78vw); }
+.trace-note { background:#fff2b8; border-radius:18px; padding:10px 18px;
+              font-size:clamp(16px,4vw,20px); font-weight:500; text-align:center;
+              max-width:92vw; }
+.trace-bar { display:flex; gap:10px; }
+.trace-bar .ghost { background:var(--card); box-shadow:0 5px 0 rgba(60,28,110,.25);
+                    border-radius:18px; padding:12px 18px; font-size:17px; }
+.trace-bar .ghost:active { transform:translateY(3px); box-shadow:0 2px 0 rgba(60,28,110,.25); }
+
+/* ---------- אולפן הקלטות ---------- */
+.studio-card { background:var(--card); border-radius:28px; padding:20px;
+               width:min(620px,96vw); max-height:92vh; display:flex; flex-direction:column;
+               text-align:right; }
+.studio-card h2 { margin:0 0 6px; font-size:22px; }
+.studio-note { margin:0 0 12px; font-size:14px; color:var(--muted); line-height:1.5; }
+.studio-bar { display:flex; align-items:center; gap:8px; padding-bottom:10px;
+              border-bottom:2px solid #eee7f7; font-size:14px; color:var(--muted); }
+.studio-bar .grow { flex:1; }
+.studio-list { overflow-y:auto; margin-top:8px; }
+.sgroup { font-size:13px; color:var(--muted); font-weight:700; margin:14px 0 6px; }
+.srow { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:14px; }
+.srow:nth-child(even) { background:#faf8ff; }
+.srow.has-clip { background:#e9f9f0; }
+.stext { flex:1; font-size:34px; font-weight:500; line-height:1.3; min-width:0;
+         overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.stext.small { font-size:15px; color:var(--ink); }
+.sbtn { width:46px; height:46px; border-radius:50%; background:#eee7f7;
+        font-size:18px; flex:none; display:grid; place-items:center; }
+.sbtn.rec { background:#ffe0ec; color:#c2185b; }
+.sbtn.rec.recording { background:#e53935; color:#fff; animation:pulse .9s infinite; }
+.sbtn:active { transform:translateY(2px); }
+@keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
+.ghost { background:#eee7f7; border-radius:16px; padding:10px 16px; font-size:15px; }
+
 /* ---------- sparkles ---------- */
 #sparkles { position:fixed; inset:0; pointer-events:none; z-index:30; overflow:hidden; }
 .spark { position:absolute; font-size:26px; animation:fly .95s ease-out forwards; }

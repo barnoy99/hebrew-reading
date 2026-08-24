@@ -62,77 +62,10 @@
     show('screen-home');
   }
 
-  /* ---------- מעבדת הקסם (sandbox) ---------- */
-
-  let lab = { letterId: null, vowelId: null };
-
-  function renderSandbox() {
-    const s = Engine.state();
-    lab = { letterId: s.letters[0], vowelId: null };
-
-    const lrow = $('#lab-letters'); lrow.innerHTML = '';
-    s.letters.forEach(id => {
-      const b = el('button', 'chip', Engine.L[id].ch);
-      b.dataset.letter = id;
-      b.onclick = () => { lab.letterId = id; renderLabVowels(); labUpdate(b); };
-      lrow.appendChild(b);
-    });
-
-    renderLabVowels();
-    labUpdate(lrow.firstChild);
-    show('screen-sandbox');
-    say(SAY.sandbox, { key: 'sandbox', rate: 0.9, interrupt: true });
-  }
-
-  /* A bare נקודה is nearly invisible on its own, so each vowel button carries
-     the letter she has currently selected — she sees the exact result before
-     committing, and there is no stray placeholder letter to confuse her. */
-  function renderLabVowels() {
-    const s = Engine.state();
-    const vrow = $('#lab-vowels');
-    vrow.innerHTML = '';
-    s.vowels.forEach(id => {
-      const b = el('button', 'chip', lab.letterId
-        ? Engine.sylText(lab.letterId, id)
-        : 'ב' + Engine.V[id].mark);
-      b.dataset.vowel = id;
-      if (id === lab.vowelId) b.classList.add('on');
-      b.onclick = () => { lab.vowelId = id; labUpdate(b); };
-      vrow.appendChild(b);
-    });
-  }
-
-  function labUpdate(activeBtn) {
-    if (activeBtn) {
-      const row = activeBtn.parentElement;
-      row.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
-      activeBtn.classList.add('on');
-    }
-    const out = $('#lab-out');
-    if (lab.letterId && lab.vowelId) {
-      const t = Engine.sylText(lab.letterId, lab.vowelId);
-      out.textContent = t;
-      labSay();
-      sparkleAt(out, 6);
-    } else if (lab.letterId) {
-      out.textContent = Engine.L[lab.letterId].ch;
-      sayLetter(lab.letterId);
-    } else {
-      out.textContent = '?';
-    }
-  }
+  /* ---------- speech helper ---------- */
 
   function sayLetter(id, opts) {
     say(Engine.letterSay(id), Object.assign({ key: 'name_' + id, rate: 0.85 }, opts || {}));
-  }
-
-  function labSay() {
-    if (!(lab.letterId && lab.vowelId)) {
-      if (lab.letterId) sayLetter(lab.letterId);
-      return;
-    }
-    say(Engine.sayOf(Engine.sylText(lab.letterId, lab.vowelId)),
-        { key: lab.letterId + '_' + lab.vowelId, rate: 0.7, interrupt: true });
   }
 
   /* ---------- round scaffolding ---------- */
@@ -148,7 +81,7 @@
     }, pause === undefined ? 350 : pause);
   }
 
-  const LEN = { listen: 8, hunt: 6, read: 6 };
+  const LEN = { listen: 8, hunt: 6, read: 6, write: 4 };
 
   function startRound(mode) {
     round = { mode, idx: 0, total: LEN[mode], items: buildItems(mode), locked: false };
@@ -162,6 +95,10 @@
       for (let i = 0; i < LEN.listen; i++) items.push({ kind: 'listen' });
     } else if (mode === 'hunt') {
       for (let i = 0; i < LEN.hunt; i++) items.push({ kind: 'hunt' });
+    } else if (mode === 'write') {
+      // weakest-written letters first, never the same letter twice in a round
+      const pool = Engine.writeQueue(LEN.write);
+      pool.forEach(id => items.push({ kind: 'write', letterId: id }));
     } else {
       const words = Engine.availableRealWords();
       const nReal = Math.min(2, words.length);
@@ -198,6 +135,7 @@
     const item = round.items[round.idx];
     if (item.kind === 'listen') return renderListen(body);
     if (item.kind === 'hunt')   return renderHunt(body);
+    if (item.kind === 'write')  return renderWrite(body, item.letterId);
     return renderRead(body, item.kind === 'real');
   }
 
@@ -352,6 +290,16 @@
     say(SAY.readAloud, { key: 'readAloud', rate: 0.9 });
   }
 
+  /* ---------- כותבת אותיות ---------- */
+
+  function renderWrite(body, letterId) {
+    Write.render(body, letterId, {
+      onDone: ok => { Engine.recordWrite(letterId, ok); next(); },
+      // a retry after the demonstration still counts as needing more practice
+      onRetry: () => Engine.recordWrite(letterId, false)
+    });
+  }
+
   /* ---------- חגיגה ---------- */
 
   function celebrate() {
@@ -418,6 +366,129 @@
     $('#parent').classList.remove('hidden');
   }
 
+  /* ---------- אולפן הקלטות ---------- */
+
+  let rec = null;   // { key, recorder, chunks, btn }
+
+  function openStudio() {
+    const items = Engine.audioManifest();
+    const list = $('#studio-list');
+    list.innerHTML = '';
+
+    let group = null;
+    items.forEach(it => {
+      if (it.group !== group) {
+        group = it.group;
+        list.appendChild(el('div', 'sgroup', group));
+      }
+      const row = el('div', 'srow');
+      row.dataset.key = it.key;
+
+      const txt = el('div', 'stext' + (it.small ? ' small' : ''), it.text);
+      row.appendChild(txt);
+
+      const play = el('button', 'sbtn', '▶');
+      play.title = 'השמעה';
+      play.onclick = () => say(it.say, { key: it.key, rate: 0.7, interrupt: true });
+      row.appendChild(play);
+
+      const recBtn = el('button', 'sbtn rec', '●');
+      recBtn.title = 'הקלטה';
+      recBtn.onclick = () => toggleRecord(it.key, recBtn, row);
+      row.appendChild(recBtn);
+
+      const del = el('button', 'sbtn del', '✕');
+      del.title = 'מחיקה';
+      del.onclick = async () => { await ClipStore.del(it.key); markRow(row, it.key); studioCount(); };
+      row.appendChild(del);
+
+      markRow(row, it.key);
+      list.appendChild(row);
+    });
+
+    studioCount();
+    $('#studio').classList.remove('hidden');
+  }
+
+  function markRow(row, key) {
+    const has = ClipStore.has(key);
+    row.classList.toggle('has-clip', has);
+    row.querySelector('.del').style.visibility = has ? 'visible' : 'hidden';
+  }
+
+  function studioCount() {
+    const items = Engine.audioManifest();
+    const done = items.filter(i => ClipStore.has(i.key)).length;
+    $('#studio-count').textContent = done + ' מתוך ' + items.length + ' הוקלטו';
+  }
+
+  async function toggleRecord(key, btn, row) {
+    if (rec && rec.key === key) return stopRecord();
+    if (rec) stopRecord();
+
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+      alert('אין גישה למיקרופון: ' + e.message);
+      return;
+    }
+    Audio2.stop();
+    const mr = new MediaRecorder(stream);
+    const chunks = [];
+    mr.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+    mr.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(chunks, { type: mr.mimeType || 'audio/webm' });
+      if (blob.size > 0) await ClipStore.put(key, blob);
+      btn.textContent = '●';
+      btn.classList.remove('recording');
+      markRow(row, key);
+      studioCount();
+      rec = null;
+      // play it straight back so he can hear the take
+      say('', { key: key });
+    };
+    rec = { key, recorder: mr, chunks, btn };
+    mr.start();
+    btn.textContent = '■';
+    btn.classList.add('recording');
+    // safety stop — a forgotten recording would run until the tab closes
+    setTimeout(() => { if (rec && rec.key === key) stopRecord(); }, 6000);
+  }
+
+  function stopRecord() {
+    if (!rec) return;
+    try { rec.recorder.stop(); } catch (e) { rec = null; }
+  }
+
+  async function exportClips() {
+    const keys = ClipStore.keys();
+    if (!keys.length) { alert('עוד לא הוקלט כלום'); return; }
+
+    const manifest = {};
+    const files = [];
+    for (const k of keys) {
+      const blob = ClipStore.blob(k);
+      const ext = (blob.type.indexOf('ogg') >= 0) ? 'ogg' : 'webm';
+      const name = k.replace(/[^\w\-]/g, '_') + '.' + ext;
+      manifest[k] = name;
+      files.push({ name: 'audio/' + name, data: new Uint8Array(await blob.arrayBuffer()) });
+    }
+    files.push({
+      name: 'audio/clips.json',
+      data: new TextEncoder().encode(JSON.stringify(manifest, null, 2))
+    });
+
+    const zip = Zip.build(files);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(zip);
+    a.download = 'eliya-clips.zip';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+  }
+
   /* ---------- wiring ---------- */
 
   /* Chrome populates its voice list asynchronously, so poll briefly before
@@ -430,8 +501,11 @@
     $('#no-voice').classList.remove('hidden');
   }
 
-  function init() {
+  async function init() {
     Engine.load();
+    // recordings and the committed-clip manifest must be known before the
+    // first sound plays, or she would hear TTS for something already recorded
+    try { await Promise.all([ClipStore.ready, Audio2.manifestReady]); } catch (e) {}
 
     // audio needs a real gesture before it will play on mobile
     const unlockOnce = () => {
@@ -442,16 +516,13 @@
 
     document.querySelectorAll('.mode').forEach(b => {
       b.onclick = () => {
-        const m = b.dataset.mode;
-        if (m === 'sandbox') renderSandbox(); else startRound(m);
+        startRound(b.dataset.mode);
       };
     });
 
     document.querySelectorAll('[data-back]').forEach(b => {
       b.onclick = () => { Audio2.stop(); renderHome(); };
     });
-
-    $('#lab-say').onclick = labSay;
 
     $('#celebrate-ok').onclick = () => {
       $('#celebrate').classList.add('hidden');
@@ -467,6 +538,9 @@
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(e => gate.addEventListener(e, up));
 
     $('#parent-close').onclick = () => { $('#parent').classList.add('hidden'); renderHome(); };
+    $('#parent-studio').onclick = openStudio;
+    $('#studio-close').onclick = () => { stopRecord(); Audio2.stop(); $('#studio').classList.add('hidden'); };
+    $('#studio-export').onclick = exportClips;
     $('#parent-reset').onclick = () => {
       if (confirm('לאפס את כל ההתקדמות?')) { Engine.reset(); $('#parent').classList.add('hidden'); renderHome(); }
     };
@@ -476,5 +550,6 @@
   }
 
   document.addEventListener('DOMContentLoaded', init);
-  window.__app = { show, startRound, renderSandbox, renderHome, openParent, get round() { return round; } };
+  window.__app = { show, startRound, renderHome, openParent, openStudio,
+                   get round() { return round; } };
 })();

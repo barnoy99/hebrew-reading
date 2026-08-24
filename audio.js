@@ -14,6 +14,10 @@ const CLIPS = new Set([
   // 'bet_kamatz', 'bet_hirik', ...
 ]);
 
+/* Filled from audio/clips.json at startup, which the recording studio's export
+   generates. key -> filename inside audio/. */
+const CLIP_FILES = new Map();
+
 const Audio2 = (function () {
   let voice = null;
   let ready = false;
@@ -72,12 +76,23 @@ const Audio2 = (function () {
     });
   }
 
+  /* Three tiers, best first: a recording made on this device, a clip committed
+     to audio/, then the speech engine. */
+  function clipSrc(key) {
+    if (!key) return null;
+    if (typeof ClipStore !== 'undefined' && ClipStore.has(key)) return ClipStore.url(key);
+    if (CLIP_FILES.has(key)) return 'audio/' + CLIP_FILES.get(key);
+    if (CLIPS.has(key)) return 'audio/' + key + '.mp3';
+    return null;
+  }
+
   function run(item, done) {
     let finished = false;
     const finish = () => { if (finished) return; finished = true; clearTimeout(guard); done(); };
 
-    if (item.key && CLIPS.has(item.key)) {
-      const a = new window.Audio('audio/' + item.key + '.mp3');
+    const src = clipSrc(item.key);
+    if (src) {
+      const a = new window.Audio(src);
       current = a;
       a.onended = finish;
       a.onerror = () => runTTS(item, finish);
@@ -128,9 +143,16 @@ const Audio2 = (function () {
     speak(text, opts);
   }
 
+  /* Committed recordings, if any have been exported into the project. */
+  const manifestReady = fetch('audio/clips.json', { cache: 'no-cache' })
+    .then(r => r.ok ? r.json() : null)
+    .then(m => { if (m) Object.keys(m).forEach(k => CLIP_FILES.set(k, m[k])); })
+    .catch(() => { /* no manifest yet — TTS covers everything */ });
+
   return {
-    unlock, speak, speakThen, stop,
+    unlock, speak, speakThen, stop, clipSrc, manifestReady,
     isBusy: () => playing || queue.length > 0,
+    hasRecording: k => !!clipSrc(k),
     hasHebrew: () => { if (!ready) pickVoice(); return !!voice; },
     voiceName: () => voice ? voice.name : '(none)'
   };

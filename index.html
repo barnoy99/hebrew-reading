@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=2">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 
@@ -30,8 +30,8 @@
   <div id="garden" class="garden"></div>
 
   <nav class="modes">
-    <button class="mode" data-mode="sandbox">
-      <span class="mode-icon">✨</span><span class="mode-label">מעבדת הקסם</span>
+    <button class="mode" data-mode="write">
+      <span class="mode-icon">✏️</span><span class="mode-label">כותבת אותיות</span>
     </button>
     <button class="mode" data-mode="listen">
       <span class="mode-icon">👂</span><span class="mode-label">שומעת ובוחרת</span>
@@ -47,19 +47,6 @@
   <p id="no-voice" class="no-voice hidden">
     🔇 אין קול בעברית במכשיר הזה — אפשר עדיין לשחק בציד אותיות
   </p>
-</section>
-
-<!-- ============ מעבדת הקסם ============ -->
-<section id="screen-sandbox" class="screen">
-  <button class="back" data-back aria-label="חזרה">↩</button>
-  <div class="lab">
-    <div id="lab-out" class="lab-out">?</div>
-    <button id="lab-say" class="ear big" aria-label="שמע">👂</button>
-  </div>
-  <div class="picker">
-    <div id="lab-letters" class="pick-row"></div>
-    <div id="lab-vowels" class="pick-row vowels"></div>
-  </div>
 </section>
 
 <!-- ============ סבב משחק ============ -->
@@ -92,16 +79,38 @@
     <div id="parent-vowels" class="toggle-grid"></div>
     <div class="parent-actions">
       <button id="parent-close" class="primary">סגירה</button>
+      <button id="parent-studio" class="ghost">🎙 אולפן הקלטות</button>
       <button id="parent-reset" class="danger">איפוס הכל</button>
     </div>
   </div>
 </div>
 
+<!-- ============ אולפן הקלטות ============ -->
+<div id="studio" class="overlay hidden">
+  <div class="studio-card">
+    <h2>🎙 אולפן הקלטות</h2>
+    <p class="studio-note">
+      הקול שלך תמיד עדיף על הקול הממוחשב. הקליטו מה שנשמע לא טוב —
+      ההקלטה נשמרת במכשיר ומשמשת מיד. כדי שתעבוד בכל המכשירים, לחצו על ייצוא.
+    </p>
+    <div class="studio-bar">
+      <span id="studio-count"></span>
+      <span class="grow"></span>
+      <button id="studio-export" class="ghost">⬇ ייצוא</button>
+      <button id="studio-close" class="primary">סגירה</button>
+    </div>
+    <div id="studio-list" class="studio-list"></div>
+  </div>
+</div>
+
 <!-- ?v= is bumped on every deploy. Without it the browser keeps serving the
      old JS from cache and the tablet needs a manual hard-refresh to update. -->
-<script src="data.js?v=2"></script>
-<script src="audio.js?v=2"></script>
-<script src="engine.js?v=2"></script>
-<script src="app.js?v=2"></script>
+<script src="data.js?v=4"></script>
+<script src="strokes.js?v=4"></script>
+<script src="clips.js?v=4"></script>
+<script src="audio.js?v=4"></script>
+<script src="engine.js?v=4"></script>
+<script src="write.js?v=4"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

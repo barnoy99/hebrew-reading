@@ -16,6 +16,8 @@ const Engine = (function () {
       vowels: START_VOWELS.slice(),
       mastery: {},        // "letterId|vowelId" -> 0..1
       seen: {},           // "letterId|vowelId" -> count
+      write: {},          // letterId -> 0..1, tracked apart from reading:
+                          // being able to read ב does not mean she can write it
       garden: [],         // indices into GARDEN
       rounds: 0,
       unlockCount: 0,
@@ -89,6 +91,33 @@ const Engine = (function () {
         : Math.max(0, cur - 0.10);
     });
     save();
+  }
+
+  /* ---------- writing ---------- */
+
+  function writeMastery(id) { return (s.write && s.write[id]) || 0; }
+
+  function recordWrite(id, ok) {
+    if (!s.write) s.write = {};
+    const cur = writeMastery(id);
+    s.write[id] = ok ? Math.min(1, cur + 0.3 * (1 - cur) + 0.08)
+                     : Math.max(0, cur - 0.15);
+    save();
+  }
+
+  /* n letters to practise writing, weakest first, no repeats within a round. */
+  function writeQueue(n) {
+    const pool = s.letters
+      .filter(id => STROKES[id])          // only letters we have stroke data for
+      .map(id => ({ id, w: 1 + 5 * (1 - writeMastery(id)) + (Math.random() * 0.8) }))
+      .sort((a, b) => b.w - a.w);
+    return pool.slice(0, Math.min(n, pool.length)).map(x => x.id);
+  }
+
+  function writeReport() {
+    return s.letters.filter(id => STROKES[id])
+      .map(id => ({ id, ch: L[id].ch, score: writeMastery(id) }))
+      .sort((a, b) => a.score - b.score);
   }
 
   function letterMastery(letterId) {
@@ -293,6 +322,24 @@ const Engine = (function () {
     return { gift: GARDEN[idx], unlocked: tryUnlock() };
   }
 
+  /* Every sound the app can currently ask for, for the recording studio.
+     Scoped to what is unlocked, so the list stays short and only grows as
+     she progresses — no point recording ז before she has met it. */
+  function audioManifest() {
+    const out = [];
+    s.letters.forEach(id =>
+      out.push({ key: 'name_' + id, group: 'שמות האותיות', text: L[id].ch, say: letterSay(id) }));
+    s.letters.forEach(li => s.vowels.forEach(vi => {
+      const t = sylText(li, vi);
+      out.push({ key: li + '_' + vi, group: 'הברות', text: t, say: TTS_FIX[key(li, vi)] || t });
+    }));
+    availableRealWords().forEach(w =>
+      out.push({ key: 'word_' + w.w, group: 'מילים', text: w.w, say: TTS_FIX[w.w] || w.w }));
+    Object.keys(SAY).forEach(k =>
+      out.push({ key: k, group: 'משפטים', text: SAY[k], say: SAY[k], small: true }));
+    return out;
+  }
+
   /* ---------- parent panel ---------- */
 
   function masteryReport() {
@@ -323,7 +370,8 @@ const Engine = (function () {
     pickSyllable, makeDistractors, pseudoWord, huntGrid,
     randomRealWord, availableRealWords,
     record, recordLetter, letterMastery, avgMastery, coverage,
-    finishRound, tryUnlock,
+    recordWrite, writeMastery, writeQueue, writeReport,
+    finishRound, tryUnlock, audioManifest,
     masteryReport, setLetterUnlocked, setVowelUnlocked
   };
 })();
