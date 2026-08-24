@@ -184,7 +184,16 @@ button { font-family:inherit; cursor:pointer; border:none; background:none; colo
 .toggle-grid { display:flex; flex-wrap:wrap; gap:7px; }
 .tg { background:#eee7f7; border-radius:12px; padding:8px 12px; font-size:22px; }
 .tg.on { background:var(--good); color:#fff; }
-.parent-actions { display:flex; gap:10px; justify-content:space-between;
+/* The studio is a primary action, so it sits at the TOP of the panel. Buried
+   under the mastery grid and 22 letter toggles it fell below the fold and had
+   to be scrolled to, which made it invisible in practice. */
+.studio-open { display:block; width:100%; margin:0 0 12px;
+               background:var(--gold); color:#4a3600; font-weight:700;
+               border-radius:18px; padding:14px 16px; font-size:17px;
+               box-shadow:0 4px 0 rgba(160,123,0,.45); }
+.studio-open:active { transform:translateY(3px); box-shadow:0 1px 0 rgba(160,123,0,.45); }
+
+.parent-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:space-between;
                   align-items:center; margin-top:20px; }
 
 /* ---------- כותבת אותיות ---------- */
