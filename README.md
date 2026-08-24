@@ -4,6 +4,11 @@ A letter-and-syllable reading app for Eliya (5). Static site, vanilla JS, no bui
 
 ## Running it
 
+**Live: <https://barnoy99.github.io/hebrew-reading/>**
+
+On the tablet, open that link and use the browser menu → "Add to Home screen" to install it
+as a fullscreen app.
+
 Locally on Windows, from this folder:
 
 ```bash
