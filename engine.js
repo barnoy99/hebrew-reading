@@ -6,11 +6,6 @@ const Engine = (function () {
   const L = {}; LETTERS.forEach(l => L[l.id] = l);
   const V = {}; VOWELS.forEach(v => V[v.id] = v);
 
-  /* Bare syllables often confuse TTS engines into reading the letter NAME.
-     A silent final ה makes it a well-formed Hebrew word ("בָּה" = "ba") which
-     reads far more reliably. Flip to false if the recorded clips take over. */
-  const TTS_APPEND_HE = true;
-
   let s = null;
 
   /* ---------- state ---------- */
@@ -59,12 +54,14 @@ const Engine = (function () {
     return L[letterId].sound + V[vowelId].sound;
   }
 
-  function ttsText(text) {
-    if (!TTS_APPEND_HE) return text;
-    const last = text[text.length - 1];
-    // already ends in a vowel letter (shuruk/holam male) — leave alone
-    if (last === 'ו' || last === 'ּ' || last === 'ה') return text;
-    return text + 'ה';
+  /* What actually gets sent to the speech engine.
+     An earlier version appended a silent ה here to stop TTS reading a bare
+     syllable as a letter name. It was wrong: it also hit whole words, so
+     בַּד was spoken "bade", גַּג "gaga" and גָּמָל "gamala". Text now goes to the
+     engine exactly as written, and anything it still mangles gets a `tts`
+     override in data.js — or a recording, which is the real fix. */
+  function ttsText(text, override) {
+    return override || text;
   }
 
   /* ---------- mastery ---------- */
@@ -146,11 +143,20 @@ const Engine = (function () {
   }
 
   function decorate(p) {
+    const text = sylText(p.letterId, p.vowelId);
     return {
       letterId: p.letterId, vowelId: p.vowelId, key: p.key,
-      text: sylText(p.letterId, p.vowelId),
+      text: text,
+      say: TTS_FIX[p.key] || text,     // what the engine is asked to pronounce
       phon: phon(p.letterId, p.vowelId)
     };
+  }
+
+  /* Spoken form of any display text: a word, a letter name, a syllable. */
+  function sayOf(text) { return TTS_FIX[text] || text; }
+  function letterSay(letterId) {
+    const l = L[letterId];
+    return l.say || l.name;
   }
 
   /* Early on, a distractor differs from the target in exactly ONE dimension,
@@ -203,7 +209,8 @@ const Engine = (function () {
       }
       syls.push(nx);
     }
-    return { syllables: syls, text: syls.map(x => x.text).join('') };
+    const text = syls.map(x => x.text).join('');
+    return { syllables: syls, text: text, say: TTS_FIX[text] || syls.map(x => x.say).join('') };
   }
 
   function availableRealWords() {
@@ -312,7 +319,7 @@ const Engine = (function () {
   return {
     load, save, reset,
     state: () => s,
-    L, V, sylText, phon, ttsText, key,
+    L, V, sylText, phon, ttsText, sayOf, letterSay, key,
     pickSyllable, makeDistractors, pseudoWord, huntGrid,
     randomRealWord, availableRealWords,
     record, recordLetter, letterMastery, avgMastery, coverage,

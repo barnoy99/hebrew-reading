@@ -81,7 +81,7 @@
     renderLabVowels();
     labUpdate(lrow.firstChild);
     show('screen-sandbox');
-    setTimeout(() => say(SAY.sandbox, { key: 'sandbox', rate: 0.9 }), 350);
+    say(SAY.sandbox, { key: 'sandbox', rate: 0.9, interrupt: true });
   }
 
   /* A bare נקודה is nearly invisible on its own, so each vowel button carries
@@ -116,22 +116,37 @@
       sparkleAt(out, 6);
     } else if (lab.letterId) {
       out.textContent = Engine.L[lab.letterId].ch;
-      say(Engine.L[lab.letterId].name, { key: 'name_' + lab.letterId, rate: 0.85 });
+      sayLetter(lab.letterId);
     } else {
       out.textContent = '?';
     }
   }
 
+  function sayLetter(id, opts) {
+    say(Engine.letterSay(id), Object.assign({ key: 'name_' + id, rate: 0.85 }, opts || {}));
+  }
+
   function labSay() {
     if (!(lab.letterId && lab.vowelId)) {
-      if (lab.letterId) say(Engine.L[lab.letterId].name, { key: 'name_' + lab.letterId });
+      if (lab.letterId) sayLetter(lab.letterId);
       return;
     }
-    const t = Engine.sylText(lab.letterId, lab.vowelId);
-    say(Engine.ttsText(t), { key: lab.letterId + '_' + lab.vowelId, rate: 0.7 });
+    say(Engine.sayOf(Engine.sylText(lab.letterId, lab.vowelId)),
+        { key: lab.letterId + '_' + lab.vowelId, rate: 0.7, interrupt: true });
   }
 
   /* ---------- round scaffolding ---------- */
+
+  /* Wraps a continuation so it runs a beat AFTER the current utterance ends,
+     and only if she is still on the same item — otherwise a late onend from a
+     screen she already left would advance the wrong round. */
+  function after(fn, pause) {
+    const r = round, i = round ? round.idx : -1;
+    return () => setTimeout(() => {
+      if (round !== r || round.idx !== i) return;
+      fn();
+    }, pause === undefined ? 350 : pause);
+  }
 
   const LEN = { listen: 8, hunt: 6, read: 6 };
 
@@ -196,10 +211,10 @@
       [opts[i], opts[j]] = [opts[j], opts[i]];
     }
 
-    body.appendChild(el('div', 'prompt', SAY.pickHeard.replace(/[֑-ׇ]/g, '')));
+    body.appendChild(el('div', 'prompt', SAY.pickHeard));
 
     const ear = el('button', 'ear big', '👂');
-    ear.onclick = () => speakTarget(target);
+    ear.onclick = () => speakTarget(target, true);
     body.appendChild(ear);
 
     const row = el('div', 'options');
@@ -212,14 +227,14 @@
           b.classList.add('right');
           sparkleAt(b, 16);
           Engine.record(target.key, true);
-          say(SAY.wasRight, { key: 'wasRight', rate: 0.95 });
-          setTimeout(next, 1100);
+          // advance only once the praise has actually finished speaking
+          say(SAY.wasRight, { key: 'wasRight', rate: 0.95, interrupt: true, onend: after(next) });
         } else {
           b.classList.add('dim');
           Engine.record(target.key, false);
           const right = [...row.children].find(c => c.textContent === target.text);
           if (right) right.classList.add('reveal');
-          say(Engine.ttsText(target.text), { key: target.letterId + '_' + target.vowelId, rate: 0.65 });
+          speakTarget(target, true);
           round.locked = true;
           setTimeout(() => { round.locked = false; }, 400);
           // from now on only the correct card advances
@@ -227,10 +242,12 @@
             if (c !== right) c.onclick = null;
           });
           if (right) right.onclick = () => {
+            if (round.locked) return;
+            round.locked = true;
             right.classList.remove('reveal');
             right.classList.add('right');
             sparkleAt(right, 12);
-            setTimeout(next, 800);
+            say(SAY.wasRight, { key: 'wasRight', rate: 0.95, interrupt: true, onend: after(next) });
           };
         }
       };
@@ -238,11 +255,11 @@
     });
     body.appendChild(row);
 
-    setTimeout(() => speakTarget(target), 450);
+    speakTarget(target);
   }
 
-  function speakTarget(t) {
-    say(Engine.ttsText(t.text), { key: t.letterId + '_' + t.vowelId, rate: 0.65 });
+  function speakTarget(t, interrupt) {
+    say(t.say, { key: t.letterId + '_' + t.vowelId, rate: 0.65, interrupt: !!interrupt });
   }
 
   /* ---------- ציד אותיות ---------- */
@@ -251,9 +268,9 @@
     const g = Engine.huntGrid(12);
     let left = g.cells.filter(c => c.hit).length;
 
-    body.appendChild(el('div', 'prompt', 'מצאי את כל האותיות'));
+    body.appendChild(el('div', 'prompt', SAY.findLetter));
     const badge = el('div', 'target-badge', g.target.ch);
-    badge.onclick = () => say(g.target.name, { key: 'name_' + g.targetId });
+    badge.onclick = () => sayLetter(g.targetId, { interrupt: true });
     body.appendChild(badge);
 
     const grid = el('div', 'hunt-grid');
@@ -266,34 +283,37 @@
           sparkleAt(b, 8);
           Engine.recordLetter(g.targetId, true);
           if (--left === 0) {
-            say(SAY.wasRight, { key: 'wasRight', rate: 0.95 });
-            setTimeout(next, 900);
+            say(SAY.wasRight, { key: 'wasRight', rate: 0.95, interrupt: true, onend: after(next) });
           }
         } else {
           b.classList.add('miss');
           setTimeout(() => b.classList.remove('miss'), 400);
           Engine.recordLetter(c.id, false);
-          say(Engine.L[c.id].name, { key: 'name_' + c.id, rate: 0.85 });
+          sayLetter(c.id, { interrupt: true });
         }
       };
       grid.appendChild(b);
     });
     body.appendChild(grid);
 
-    setTimeout(() => say('מצאי את כל ה' + g.target.name, { rate: 0.85 }), 350);
+    say('מצאי את כל האות ' + Engine.letterSay(g.targetId), { rate: 0.85 });
   }
 
   /* ---------- קוראת בקול ---------- */
 
+  /* Nothing may hint at the answer before she commits: no picture, no gold
+     "real word" styling, and the same prompt for real and nonsense words —
+     otherwise she reads the picture instead of the letters. All of it is the
+     reward for having answered. */
   function renderRead(body, isReal) {
     const rw = isReal ? Engine.randomRealWord() : null;
     const pw = rw ? null : Engine.pseudoWord();
     const text = rw ? rw.w : pw.text;
+    const spoken = rw ? Engine.sayOf(rw.tts || rw.w) : pw.say;
 
-    body.appendChild(el('div', 'prompt', isReal ? 'זאת מילה אמיתית! קראי אותה' : 'קראי בקול רם'));
-    if (rw) body.appendChild(el('div', 'word-pic', rw.pic));
+    body.appendChild(el('div', 'prompt', SAY.readAloud));
 
-    const w = el('div', rw ? 'word real' : 'word', text);
+    const w = el('div', 'word', text);
     body.appendChild(w);
 
     const ear = el('button', 'ear big', '👂');
@@ -301,7 +321,7 @@
     judge.classList.add('hidden');
 
     ear.onclick = () => {
-      say(Engine.ttsText(text), { rate: 0.6 });
+      say(spoken, { rate: 0.6, interrupt: true });
       judge.classList.remove('hidden');
     };
     body.appendChild(ear);
@@ -311,16 +331,25 @@
       b.onclick = () => {
         if (round.locked) return;
         round.locked = true;
-        if (ok) sparkleAt(w, 14);
         if (pw) pw.syllables.forEach(sy => Engine.record(sy.key, ok));
         else if (rw) rw.letters.forEach(id => Engine.recordLetter(id, ok));
-        setTimeout(next, 650);
+
+        if (rw) {                       // now she may see what it meant
+          w.classList.add('real');
+          const pic = el('div', 'word-pic', rw.pic);
+          w.parentNode.insertBefore(pic, w);
+          sparkleAt(w, 16);
+          say(SAY.realWord, { key: 'realWord', rate: 0.9, interrupt: true, onend: after(next, 500) });
+        } else {
+          if (ok) sparkleAt(w, 14);
+          setTimeout(next, 650);
+        }
       };
       judge.appendChild(b);
     });
     body.appendChild(judge);
 
-    setTimeout(() => say(isReal ? SAY.realWord : SAY.readAloud, { rate: 0.9 }), 350);
+    say(SAY.readAloud, { key: 'readAloud', rate: 0.9 });
   }
 
   /* ---------- חגיגה ---------- */

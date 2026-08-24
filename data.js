@@ -19,13 +19,17 @@ const VOWELS = [
 
 /* ---------- אותיות ----------
    dagesh:true  -> v1 always renders the plosive form (בּ כּ פּ).
-   confuse      -> visually similar letters, used for hard distractors only.  */
+   confuse      -> visually similar letters, used for hard distractors only.
+   say          -> optional spelling used ONLY for speech, when the engine
+                   mispronounces the correct name. `name` stays correct for
+                   display. Do NOT simply drop the nikud here: unpointed בית
+                   is read "bayit", not "bet".                                */
 const LETTERS = [
   { id:'alef',   ch:'א', name:'אָלֶף',  sound:'',   silent:true, confuse:['ayin'] },
   { id:'bet',    ch:'ב', name:'בֵּית',   sound:'b',  dagesh:true, confuse:['kaf','nun'] },
-  { id:'gimel',  ch:'ג', name:'גִּימֶל', sound:'g',  confuse:['nun','tsadi'] },
+  { id:'gimel',  ch:'ג', name:'גִּימֶל', sound:'g',  confuse:['nun','tsadi'], say:'גימל' },
   { id:'dalet',  ch:'ד', name:'דָּלֶת',  sound:'d',  confuse:['resh','kaf'] },
-  { id:'he',     ch:'ה', name:'הֵא',    sound:'h',  confuse:['het','tav'] },
+  { id:'he',     ch:'ה', name:'הֵא',    sound:'h',  confuse:['het','tav'], say:'הֵיי' },
   { id:'vav',    ch:'ו', name:'וָו',    sound:'v',  confuse:['zayin','yod'] },
   { id:'zayin',  ch:'ז', name:'זַיִן',   sound:'z',  confuse:['vav'] },
   { id:'het',    ch:'ח', name:'חֵית',   sound:'ch', confuse:['he','tav'] },
@@ -89,6 +93,15 @@ const REAL_WORDS = [
   { w:'בָּנָנָה', pic:'🍌',  letters:['bet','nun','he'],          vowels:['kamatz'] }
 ];
 
+/* ---------- TTS overrides ----------
+   The escape hatch for anything the speech engine still gets wrong. The key is
+   the syllable key ("<letterId>_<vowelId>") or the literal word; the value is an
+   alternative spelling to SPEAK — what she sees on screen never changes.
+   Recording the sound is always the better fix; this is for quick patches.
+   Example:  'gimel_hirik': 'גִּי',   'גַּג': 'גג'                              */
+const TTS_FIX = {
+};
+
 /* ---------- הגן הקסום ---------- */
 const THEME = {
   mascot: '🦄',
@@ -103,15 +116,18 @@ const GARDEN = [
   '🏰','🐉','🦢','🌙','☁️','🕊️','🦉','🌳','💫','🎠'
 ];
 
-/* Spoken prompts. Every one of these is also an on-screen icon. */
+/* Spoken prompts — deliberately UNPOINTED.
+   Hebrew TTS reads ordinary text far better than pointed text because it uses
+   its own dictionary. Pointing these was what turned כל into "kal" (כל is
+   קמץ קטן, so a written קמץ literally says "kal"). Only the practice items
+   themselves carry nikud. These strings are displayed as-is too. */
 const SAY = {
-  welcome:    'שָׁלוֹם ' + CHILD.name + '! בּוֹאִי נִקְרָא!',
-  pickHeard:  'אֵיזוֹ הֲבָרָה שָׁמַעְתְּ?',
-  findLetter: 'מִצְאִי אֶת כָּל הָאוֹתִיּוֹת',
-  readAloud:  'קִרְאִי בְּקוֹל רָם',
-  wasRight:   'יוֹפִי! נָכוֹן מְאוֹד!',
-  tryThis:    'זֶה הָיָה זֶה. תִּלְחֲצִי עָלָיו',
-  roundDone:  'כָּל הַכָּבוֹד! קִבַּלְתְּ מַתָּנָה לַגַּן!',
-  realWord:   'זֹאת מִלָּה אֲמִתִּית!',
-  sandbox:    'תִּלְחֲצִי עַל אוֹת, וְאַחַר כָּךְ עַל נְקֻדָּה'
+  welcome:    'שלום ' + CHILD.name + '! בואי נקרא!',
+  pickHeard:  'איזו הברה שמעת?',
+  findLetter: 'מצאי את כל האותיות',
+  readAloud:  'קראי בקול רם',
+  wasRight:   'יופי! נכון מאוד!',
+  roundDone:  'כל הכבוד! קיבלת מתנה לגן!',
+  realWord:   'זאת מילה אמיתית!',
+  sandbox:    'תלחצי על אות ואחר כך על ניקוד'
 };
