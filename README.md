@@ -19,9 +19,28 @@ Then open <http://localhost:8044>.
 
 Deployed from `main` via GitHub Pages — pushing to `origin/main` updates the live site.
 
+## Cross-device sync
+
+Progress and Abba's recordings follow her to whatever device she picks up, via the same
+Firebase project as the French app and Abigail's English app (`progress/eliyaReading` and
+`progress/eliyaReadingClips` — sibling keys under the one subtree its rules open, so no
+rules change was needed).
+
+Local storage stays the source of truth and the app works fully offline; Firebase is only
+a courier. Progress is **merged**, never overwritten: each letter+vowel pair takes its
+record from whichever device practised it more, unlocked letters and vowels are a union,
+and the garden and writing scores take the larger. A stale or empty remote can never roll
+a device back.
+
+Recordings travel as base64 with a small index read first, so a device downloads only the
+clips it lacks, in the background after startup.
+
+**localhost never writes to the live record** — a dev run cannot overwrite her real
+progress. The parent panel shows the sync state.
+
 ## How it adapts
 
-Everything is stored in `localStorage` under `eliyaReading_state`.
+Progress is stored in `localStorage` under `eliyaReading_state` and mirrored to Firebase.
 
 - **Per-pair mastery.** Each letter+vowel combination (`בּ+קמץ` separately from `בּ+חיריק`)
   carries a 0–1 score. Correct answers raise it gently, a miss drops it by 0.30.
