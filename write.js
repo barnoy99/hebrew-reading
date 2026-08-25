@@ -31,6 +31,8 @@ const Write = (function () {
   function font(px) { return '500 ' + px + 'px Rubik, Arial, sans-serif'; }
   function glyphPx() { return BOX * 0.95; }
 
+  const TRIES = 2;        // after this many, show her how and move on
+
   const MSG = {
     reversed:  'מתחילים מלמעלה ויורדים למטה',
     start:     'מתחילים מהעיגול הצהוב',
@@ -38,6 +40,9 @@ const Write = (function () {
     count:     'בואי נראה איך כותבים את זה',
     coverage:  'צריך לצייר על כל האות'
   };
+  /* Said on the last try instead of a correction: at this point she has had
+     her two goes, so this is a demonstration, not another thing to fix. */
+  const SHOW_ME = 'ככה כותבים את האות. בפעם הבאה תצליחי!';
 
   /* ---------- geometry ---------- */
 
@@ -197,7 +202,8 @@ const Write = (function () {
     const ctx = cv.getContext('2d');
     ctx.scale(dpr, dpr);
 
-    let strokes = [], cur = null, busy = false, settle = null, anim = null;
+    let strokes = [], cur = null, busy = false, settle = null, anim = null,
+        attempts = 0, demoGuard = null;
 
     function drawGuide(showHints) {
       ctx.clearRect(0, 0, SIZE, SIZE);
@@ -307,31 +313,55 @@ const Write = (function () {
         setTimeout(() => opts.onDone && opts.onDone(true), 900);
         return;
       }
-      const msg = MSG[problem.reason] || MSG.count;
+
+      attempts++;
+      const last = attempts >= TRIES;
+      const msg = last ? SHOW_ME : (MSG[problem.reason] || MSG.count);
       note.textContent = msg;
       note.classList.remove('hidden');
       Audio2.speak(msg, { rate: 0.9, interrupt: true });
+
       demo(() => {
+        if (last) {
+          // two goes is enough — she has seen it done, now move on rather than
+          // grinding on one letter until she gives up
+          if (opts.onDone) opts.onDone(false);
+          return;
+        }
         note.classList.add('hidden');
         strokes = []; busy = false;
         cv.style.pointerEvents = '';
         repaint();
-        if (opts.onRetry) opts.onRetry();
       });
     }
 
-    /* Animate the correct way: each stroke drawn in order by a moving dot. */
+    /* Animate the correct way: each stroke drawn in order by a moving dot.
+       requestAnimationFrame stops when the tab is hidden or not compositing,
+       so `done` is also armed on a timer — without it, switching away mid-demo
+       would strand her on a frozen screen the round could never leave. */
     function demo(done) {
       cancelAnimationFrame(anim);
-      let i = 0, t = 0;
+      clearTimeout(demoGuard);
+      let i = 0, t = 0, ended = false;
       const speed = 0.022;
       const trail = [];
 
+      const finishDemo = () => {
+        if (ended) return;
+        ended = true;
+        cancelAnimationFrame(anim);
+        clearTimeout(demoGuard);
+        done();
+      };
+      const expected = ref.length * (1 / speed) * 17 + 900;
+      demoGuard = setTimeout(finishDemo, expected + 2500);
+
       function frame() {
+        if (ended) return;
         t += speed;
         if (t >= 1) { trail.push(ref[i].map(toPx)); i++; t = 0; }
         if (i >= ref.length) {
-          setTimeout(done, 700);
+          setTimeout(finishDemo, 700);
           return;
         }
         drawGuide(false);

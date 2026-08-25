@@ -15,8 +15,11 @@
    than teaching none. Open _strokes.html to watch all 22 animate, and correct
    anything wrong here — each letter is just a list of point lists.           */
 
+/* א is deliberately absent: its three short strokes meeting on a diagonal do
+   not trace well at this age and the guide read badly. Letters without an
+   entry here are simply skipped by the writing mode (Engine.writeQueue filters
+   on STROKES), so removing one is all it takes to retire it. */
 const STROKES = {
-  alef:   [[[72,24],[28,76]], [[30,26],[49,49]], [[51,51],[71,74]]],
   bet:    [[[30,25],[70,25],[76,33],[76,68]], [[78,74],[20,74]]],
   gimel:  [[[64,24],[62,50],[72,76]], [[36,46],[60,62]]],
   dalet:  [[[78,26],[20,26]], [[60,28],[60,76]]],

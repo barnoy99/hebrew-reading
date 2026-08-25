@@ -293,10 +293,9 @@
   /* ---------- כותבת אותיות ---------- */
 
   function renderWrite(body, letterId) {
+    // two tries; after that she is shown how and the round moves on
     Write.render(body, letterId, {
-      onDone: ok => { Engine.recordWrite(letterId, ok); next(); },
-      // a retry after the demonstration still counts as needing more practice
-      onRetry: () => Engine.recordWrite(letterId, false)
+      onDone: ok => { Engine.recordWrite(letterId, ok); next(); }
     });
   }
 
