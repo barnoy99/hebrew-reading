@@ -1,6 +1,13 @@
 /* app.js — screens, modes and the round loop. */
 
 (function () {
+  /* Must match version.json. Asset URLs carry ?v=N, but nothing versions
+     index.html itself — and a page added to the home screen can hold on to it
+     for a very long time. That is how the tablet ended up running a build from
+     before sync existed, quietly playing TTS while 46 recordings sat in the
+     cloud. So the app checks for a newer build and reloads itself. */
+  const APP_VERSION = 8;
+
   const $  = (sel) => document.querySelector(sel);
   const el = (tag, cls, txt) => {
     const n = document.createElement(tag);
@@ -332,7 +339,8 @@
   /* ---------- מסך הורים ---------- */
 
   function openParent() {
-    const lines = ['Hebrew voice: ' +
+    const lines = ['App build: v' + APP_VERSION,
+      'Hebrew voice: ' +
       (Audio2.hasHebrew() ? Audio2.voiceName() : 'NONE — install a Hebrew TTS pack')];
     if (typeof Sync !== 'undefined') {
       const c = Sync.clips;
@@ -527,7 +535,23 @@
     $('#no-voice').classList.remove('hidden');
   }
 
+  /* Reload onto a fresh index.html when a newer build is published. The query
+     string is what defeats the cache — reloading the same path would just be
+     served from it again. Guarded by sessionStorage so it can never loop. */
+  async function checkForUpdate() {
+    try {
+      const r = await fetch('version.json', { cache: 'no-store' });
+      if (!r.ok) return;
+      const v = (await r.json()).v;
+      if (!v || v === APP_VERSION) return;
+      if (sessionStorage.getItem('eliyaReading_updateTo') === String(v)) return;
+      sessionStorage.setItem('eliyaReading_updateTo', String(v));
+      location.replace(location.pathname + '?v=' + v);
+    } catch (e) { /* offline — carry on with what we have */ }
+  }
+
   async function init() {
+    checkForUpdate();
     Engine.load();
     // recordings and the committed-clip manifest must be known before the
     // first sound plays, or she would hear TTS for something already recorded

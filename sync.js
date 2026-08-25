@@ -124,6 +124,15 @@ const Sync = (function () {
         } catch (err) { /* one bad clip must not stop the rest */ }
       }
       clipInfo.pulled += got;
+
+      /* Anything recorded on this device while sync was unavailable — offline,
+         or on a build older than sync itself — would otherwise never leave it.
+         Upload whatever the cloud does not already have. */
+      const remoteKeys = new Set(entries.map(e => e.meta.k));
+      for (const k of ClipStore.keys()) {
+        if (!remoteKeys.has(k)) await pushClip(k);
+      }
+
       if (got && onChange) onChange(false, got);
       return got;
     }).catch(function () { return 0; });
