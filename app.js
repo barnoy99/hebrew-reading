@@ -6,7 +6,7 @@
      for a very long time. That is how the tablet ended up running a build from
      before sync existed, quietly playing TTS while 46 recordings sat in the
      cloud. So the app checks for a newer build and reloads itself. */
-  const APP_VERSION = 8;
+  const APP_VERSION = 9;
 
   const $  = (sel) => document.querySelector(sel);
   const el = (tag, cls, txt) => {
@@ -88,7 +88,7 @@
     }, pause === undefined ? 350 : pause);
   }
 
-  const LEN = { listen: 8, hunt: 6, read: 6, write: 4 };
+  const LEN = { listen: 8, hunt: 6, read: 6 };
 
   function startRound(mode) {
     round = { mode, idx: 0, total: LEN[mode], items: buildItems(mode), locked: false };
@@ -102,10 +102,6 @@
       for (let i = 0; i < LEN.listen; i++) items.push({ kind: 'listen' });
     } else if (mode === 'hunt') {
       for (let i = 0; i < LEN.hunt; i++) items.push({ kind: 'hunt' });
-    } else if (mode === 'write') {
-      // weakest-written letters first, never the same letter twice in a round
-      const pool = Engine.writeQueue(LEN.write);
-      pool.forEach(id => items.push({ kind: 'write', letterId: id }));
     } else {
       const words = Engine.availableRealWords();
       const nReal = Math.min(2, words.length);
@@ -142,7 +138,6 @@
     const item = round.items[round.idx];
     if (item.kind === 'listen') return renderListen(body);
     if (item.kind === 'hunt')   return renderHunt(body);
-    if (item.kind === 'write')  return renderWrite(body, item.letterId);
     return renderRead(body, item.kind === 'real');
   }
 
@@ -297,13 +292,72 @@
     say(SAY.readAloud, { key: 'readAloud', rate: 0.9 });
   }
 
-  /* ---------- כותבת אותיות ---------- */
+  /* ---------- כותבת אותיות ----------
+     A board, not a test. She picks a letter, watches how it is written as
+     often as she likes, and practises. Nothing is scored and nothing moves her
+     on; the only thing tracked is which letters she has drawn on, so the
+     garden can still reward her for turning up. */
 
-  function renderWrite(body, letterId) {
-    // two tries; after that she is shown how and the round moves on
-    Write.render(body, letterId, {
-      onDone: ok => { Engine.recordWrite(letterId, ok); next(); }
+  const WRITE_GOAL = 4;
+  let wboard = null;
+  let practised = new Set();
+
+  function renderWriteScreen() {
+    if (!wboard) {
+      wboard = Write.board($('#write-board'), { onPractised: markPractised });
+      $('#write-demo').onclick  = () => wboard.demo();
+      $('#write-clear').onclick = () => wboard.clear();
+      $('#write-say').onclick   = () => {
+        if (wboard.letterId) sayLetter(wboard.letterId, { interrupt: true });
+      };
+    }
+    practised = new Set();
+    renderWriteLetters();
+    renderWriteProgress();
+
+    const first = Engine.state().letters.filter(id => STROKES[id])[0];
+    selectWriteLetter(first);
+    show('screen-write');
+  }
+
+  function renderWriteLetters() {
+    const row = $('#write-letters');
+    row.innerHTML = '';
+    Engine.state().letters.filter(id => STROKES[id]).forEach(id => {
+      const b = el('button', 'chip', Engine.L[id].ch);
+      b.dataset.letter = id;
+      b.onclick = () => selectWriteLetter(id);
+      row.appendChild(b);
     });
+  }
+
+  function selectWriteLetter(id) {
+    if (!id) return;
+    $('#write-letters').querySelectorAll('.chip').forEach(c =>
+      c.classList.toggle('on', c.dataset.letter === id));
+    wboard.setLetter(id, true);            // demonstration plays once
+    sayLetter(id);
+  }
+
+  function markPractised(id) {
+    if (practised.has(id)) return;
+    practised.add(id);
+    Engine.recordWrite(id);
+    renderWriteProgress();
+    if (practised.size >= WRITE_GOAL) {
+      practised = new Set();
+      renderWriteProgress();
+      celebrate();
+    }
+  }
+
+  function renderWriteProgress() {
+    const p = $('#write-progress');
+    p.innerHTML = '';
+    for (let i = 0; i < WRITE_GOAL; i++) {
+      const d = el('div', 'dot' + (i < practised.size ? ' done' : ''));
+      p.appendChild(d);
+    }
   }
 
   /* ---------- חגיגה ---------- */
@@ -575,7 +629,8 @@
 
     document.querySelectorAll('.mode').forEach(b => {
       b.onclick = () => {
-        startRound(b.dataset.mode);
+        const m = b.dataset.mode;
+        if (m === 'write') renderWriteScreen(); else startRound(m);
       };
     });
 

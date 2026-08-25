@@ -139,31 +139,25 @@ const Engine = (function () {
     save();
   }
 
-  /* ---------- writing ---------- */
+  /* ---------- writing ----------
+     Writing is practice, not a test — nothing about it is scored. This is only
+     a tally of how many times she has drawn each letter, so the parent panel
+     can show what she has been working on. */
 
-  function writeMastery(id) { return (s.write && s.write[id]) || 0; }
+  function writeCount(id) { return (s.write && s.write[id]) || 0; }
 
-  function recordWrite(id, ok) {
+  function recordWrite(id) {
     if (!s.write) s.write = {};
-    const cur = writeMastery(id);
-    s.write[id] = ok ? Math.min(1, cur + 0.3 * (1 - cur) + 0.08)
-                     : Math.max(0, cur - 0.15);
+    // older builds stored a 0..1 mastery score here; start the tally clean
+    if (s.write[id] > 0 && s.write[id] < 1) s.write[id] = 0;
+    s.write[id] = writeCount(id) + 1;
     save();
-  }
-
-  /* n letters to practise writing, weakest first, no repeats within a round. */
-  function writeQueue(n) {
-    const pool = s.letters
-      .filter(id => STROKES[id])          // only letters we have stroke data for
-      .map(id => ({ id, w: 1 + 5 * (1 - writeMastery(id)) + (Math.random() * 0.8) }))
-      .sort((a, b) => b.w - a.w);
-    return pool.slice(0, Math.min(n, pool.length)).map(x => x.id);
   }
 
   function writeReport() {
     return s.letters.filter(id => STROKES[id])
-      .map(id => ({ id, ch: L[id].ch, score: writeMastery(id) }))
-      .sort((a, b) => a.score - b.score);
+      .map(id => ({ id, ch: L[id].ch, count: writeCount(id) }))
+      .sort((a, b) => b.count - a.count);
   }
 
   function letterMastery(letterId) {
@@ -417,7 +411,7 @@ const Engine = (function () {
     pickSyllable, makeDistractors, pseudoWord, huntGrid,
     randomRealWord, availableRealWords,
     record, recordLetter, letterMastery, avgMastery, coverage,
-    recordWrite, writeMastery, writeQueue, writeReport,
+    recordWrite, writeCount, writeReport,
     finishRound, tryUnlock, audioManifest,
     masteryReport, setLetterUnlocked, setVowelUnlocked
   };
