@@ -155,7 +155,7 @@ const Engine = (function () {
   }
 
   function writeReport() {
-    return s.letters.filter(id => STROKES[id])
+    return s.letters
       .map(id => ({ id, ch: L[id].ch, count: writeCount(id) }))
       .sort((a, b) => b.count - a.count);
   }

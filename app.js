@@ -6,7 +6,7 @@
      for a very long time. That is how the tablet ended up running a build from
      before sync existed, quietly playing TTS while 46 recordings sat in the
      cloud. So the app checks for a newer build and reloads itself. */
-  const APP_VERSION = 9;
+  const APP_VERSION = 10;
 
   const $  = (sel) => document.querySelector(sel);
   const el = (tag, cls, txt) => {
@@ -293,10 +293,10 @@
   }
 
   /* ---------- כותבת אותיות ----------
-     A board, not a test. She picks a letter, watches how it is written as
-     often as she likes, and practises. Nothing is scored and nothing moves her
-     on; the only thing tracked is which letters she has drawn on, so the
-     garden can still reward her for turning up. */
+     A board, not a test. She picks a letter, it appears faint to trace over,
+     and she practises. No stroke animation — Abba teaches the strokes himself.
+     Nothing is scored and nothing moves her on; the only thing tracked is
+     which letters she has drawn on, so the garden can still reward her. */
 
   const WRITE_GOAL = 4;
   let wboard = null;
@@ -305,7 +305,6 @@
   function renderWriteScreen() {
     if (!wboard) {
       wboard = Write.board($('#write-board'), { onPractised: markPractised });
-      $('#write-demo').onclick  = () => wboard.demo();
       $('#write-clear').onclick = () => wboard.clear();
       $('#write-say').onclick   = () => {
         if (wboard.letterId) sayLetter(wboard.letterId, { interrupt: true });
@@ -315,15 +314,14 @@
     renderWriteLetters();
     renderWriteProgress();
 
-    const first = Engine.state().letters.filter(id => STROKES[id])[0];
-    selectWriteLetter(first);
+    selectWriteLetter(Engine.state().letters[0]);
     show('screen-write');
   }
 
   function renderWriteLetters() {
     const row = $('#write-letters');
     row.innerHTML = '';
-    Engine.state().letters.filter(id => STROKES[id]).forEach(id => {
+    Engine.state().letters.forEach(id => {
       const b = el('button', 'chip', Engine.L[id].ch);
       b.dataset.letter = id;
       b.onclick = () => selectWriteLetter(id);
@@ -335,8 +333,8 @@
     if (!id) return;
     $('#write-letters').querySelectorAll('.chip').forEach(c =>
       c.classList.toggle('on', c.dataset.letter === id));
-    wboard.setLetter(id, true);            // demonstration plays once
-    sayLetter(id);
+    wboard.setLetter(id);
+    sayLetter(id, { interrupt: true });
   }
 
   function markPractised(id) {
